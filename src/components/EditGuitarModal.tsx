@@ -2,6 +2,25 @@
 
 import { useState } from 'react';
 
+interface Guitar {
+  guitar_id: number;
+  brand: string;
+  model: string;
+  year: string;
+  serial_number?: string;
+  genre?: string;
+  body_type?: string;
+  photos: {
+    photo_id: number;
+    url: string;
+    caption: string;
+  }[];
+  user: {
+    username: string;
+    user_id: number;
+  };
+}
+
 interface EditGuitarModalProps {
   isOpen: boolean;
   onClose: () => void;

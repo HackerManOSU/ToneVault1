@@ -1,6 +1,5 @@
 // src/components/GuitarCard.tsx
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import EditGuitarModal from './EditGuitarModal';
 
 interface Photo {
