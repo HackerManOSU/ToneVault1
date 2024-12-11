@@ -10,7 +10,7 @@ interface Guitar {
   genre?: string;
   body_type?: string;
   photos: Photo[];
-  last_modified: string; // Add this line
+  last_modified: string;
   user: {
     username: string;
     user_id: number;

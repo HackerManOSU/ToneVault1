@@ -11,6 +11,7 @@ interface Guitar {
   year: string;
   serial_number?: string;
   photos: Photo[];
+  last_modified: string;
   user: {
     username: string;
     user_id: number;
@@ -120,6 +121,7 @@ const HomePage = () => {
           url: `http://localhost:5001/photos/${newGuitar.photo_id}`,
           caption: newGuitar.caption || ''
         }] : [],
+        last_modified: newGuitar.last_modified,
         user: {
           user_id: newGuitar.user_id,
           username: newGuitar.username
