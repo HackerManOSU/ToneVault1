@@ -92,9 +92,9 @@ const ProfilePage = () => {
         }
         throw new Error('Failed to fetch guitar count');
       }
-  
+      
       const data = await response.json();
-      setGuitarCount(data.count);
+      setGuitarCount(data.guitar_count);
     } catch (err) {
       console.error('Error fetching guitar count:', err);
     }
