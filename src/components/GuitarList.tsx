@@ -7,7 +7,10 @@ interface Guitar {
   model: string;
   year: string;
   serial_number?: string;
+  genre?: string;
+  body_type?: string;
   photos: Photo[];
+  last_modified: string; // Add this line
   user: {
     username: string;
     user_id: number;
