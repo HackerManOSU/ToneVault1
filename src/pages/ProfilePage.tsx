@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import GuitarList from '../components/GuitarList';
+import { Link } from 'react-router-dom';
 
 interface Guitar {
   guitar_id: number;
@@ -28,6 +29,7 @@ const ProfilePage = () => {
   const [userGuitars, setUserGuitars] = useState<Guitar[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [guitarCount, setGuitarCount] = useState<number>(0);
   
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
 
@@ -64,7 +66,38 @@ const ProfilePage = () => {
 
   useEffect(() => {
     fetchUserGuitars();
+    fetchGuitarCount();
   }, []);
+
+  const fetchGuitarCount = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/');
+        return;
+      }
+  
+      const response = await fetch(`http://localhost:5001/users/${currentUser.user_id}/guitar-count`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+  
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('token');
+          navigate('/');
+          return;
+        }
+        throw new Error('Failed to fetch guitar count');
+      }
+  
+      const data = await response.json();
+      setGuitarCount(data.count);
+    } catch (err) {
+      console.error('Error fetching guitar count:', err);
+    }
+  };
 
   const handleEditGuitar = async (guitarId: number, formData: FormData) => {
     try {
@@ -141,6 +174,7 @@ const ProfilePage = () => {
           <div>
             <h1 className="text-2xl font-bold">{currentUser.username}</h1>
             <p className="text-gray-600">Member since {new Date(currentUser.created_at).toLocaleDateString()}</p>
+            <p className="text-gray-600 mt-1">Total guitars: {guitarCount}</p>
           </div>
         </div>
       </div>
@@ -148,9 +182,20 @@ const ProfilePage = () => {
       <h2 className="text-xl font-bold mb-4">My Guitars</h2>
       
       {loading && <p className="text-gray-600">Loading...</p>}
+
       {error && <p className="text-red-500">{error}</p>}
-      
-      {!loading && !error && (
+
+      {!loading && !error && userGuitars.length === 0 ? (
+        <div className="text-center p-8 bg-gray-50 rounded-lg">
+          <p className="text-gray-600 text-lg mb-4">You haven't added any guitars yet</p>
+          <Link
+            to="/home"
+            className="inline-block px-6 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600"
+          >
+            Add Your First Guitar
+          </Link>
+        </div>
+      ) : (
         <GuitarList 
           guitars={userGuitars}
           currentUserId={currentUser.user_id}

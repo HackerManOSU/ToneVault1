@@ -108,6 +108,7 @@ const EditGuitarModal = ({ isOpen, onClose, guitar, onSubmit }: EditGuitarModalP
             <select
               className="w-full p-2 border rounded"
               value={formData.body_type}
+              defaultValue={guitar.body_type}
               onChange={e => setFormData({...formData, body_type: e.target.value})}
               required
             >

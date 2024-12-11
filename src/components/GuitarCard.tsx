@@ -18,6 +18,7 @@ interface GuitarCardProps {
     genre?: string;
     body_type?: string;
     photos: Photo[];
+    last_modified: string; // Add this line
     user: {
       username: string;
       user_id: number;
@@ -27,6 +28,18 @@ interface GuitarCardProps {
   onEditGuitar: (guitarId: number, formData: FormData) => Promise<void>;
   onDeleteGuitar: (guitarId: number) => Promise<void>;
 }
+
+const getTimeElapsed = (lastModified: string): string => {
+  const diff = Date.now() - new Date(lastModified).getTime();
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  if (days > 0) return `${days}d ago`;
+  if (hours > 0) return `${hours}h ago`;
+  if (minutes > 0) return `${minutes}m ago`;
+  return 'just now';
+};
 
 const GuitarCard = ({ guitar, currentUserId, onEditGuitar, onDeleteGuitar }: GuitarCardProps) => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -41,11 +54,14 @@ const GuitarCard = ({ guitar, currentUserId, onEditGuitar, onDeleteGuitar }: Gui
     <div className="bg-white border rounded-lg mb-6">
       {/* Header - User info and options */}
       <div className="flex items-center justify-between px-4 py-3">
-        <div className="flex items-center">
+        <div className="flex items-center space-x-3">
           <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
             <span className="text-sm font-medium">{guitar.user.username[0].toUpperCase()}</span>
           </div>
-          <span className="ml-3 font-medium">{guitar.user.username}</span>
+          <div>
+            <span className="ml-3 font-medium">{guitar.user.username}</span>
+            <p className="text-xs text-gray-500">{getTimeElapsed(guitar.last_modified)}</p>
+          </div>
         </div>
         {guitar.user.user_id === currentUserId && (
           <div className="relative">

@@ -71,10 +71,11 @@ const AddGuitarModal = ({ isOpen, onClose, onSubmit }: AddGuitarModalProps) => {
             />
             <input
               type="text"
-              placeholder="Serial Number (optional)"
+              placeholder="Serial Number"
               className="w-full p-2 border rounded"
               value={formData.serial_number}
               onChange={e => setFormData({...formData, serial_number: e.target.value})}
+              required
             />
             <input
                 type="text"
@@ -122,6 +123,7 @@ const AddGuitarModal = ({ isOpen, onClose, onSubmit }: AddGuitarModalProps) => {
               className="w-full p-2 border rounded"
               value={formData.caption}
               onChange={e => setFormData({...formData, caption: e.target.value})}
+              required
             />
           </div>
           <div className="flex justify-end space-x-4 mt-6">

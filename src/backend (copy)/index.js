@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const mysql = require('mysql2');
 const multer = require('multer');
+require('dotenv').config();
 
 const app = express();
 
@@ -15,11 +16,13 @@ app.use(cors({
 app.use(express.json());
 
 const connection = mysql.createConnection({
-  host: 'classmysql.engr.oregonstate.edu',
-  user: 'cs340_garveyz',
-  password: '9295',
-  database: 'cs340_garveyz',
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_DATABASE,
 });
+
+
 
 connection.connect((err) => {
   if (err) {
@@ -91,9 +94,9 @@ const authenticateToken = (req, res, next) => {
   );
 };
 
-// ++++++++++ GUITARS ++++++++++
+// ++++++++++++++++++++ GUITARS ++++++++++++++++++++
 
-// Get user's guitars
+// ++++++++++ GET USERS GUITARS ++++++++++
 app.get('/users/:userId/guitars', authenticateToken, (req, res) => {
   const { userId } = req.params;
   
@@ -111,6 +114,7 @@ app.get('/users/:userId/guitars', authenticateToken, (req, res) => {
       g.serial_number,
       g.genre,
       g.body_type,
+      g.last_modified,
       p.photo_id,
       p.caption,
       u.user_id,
@@ -131,22 +135,23 @@ app.get('/users/:userId/guitars', authenticateToken, (req, res) => {
     const guitars = results.reduce((acc, row) => {
       const guitarId = row.guitar_id;
       
-      if (!acc[guitarId]) {
-        acc[guitarId] = {
-          guitar_id: row.guitar_id,
-          brand: row.brand,
-          model: row.model,
-          year: row.year,
-          serial_number: row.serial_number,
-          genre: row.genre || '',
-          body_type: row.body_type || '',
-          photos: [],
-          user: {
-            user_id: row.user_id,
-            username: row.username
-          }
-        };
-      }
+if (!acc[guitarId]) {
+  acc[guitarId] = {
+    guitar_id: row.guitar_id,
+    brand: row.brand,
+    model: row.model,
+    year: row.year,
+    serial_number: row.serial_number,
+    genre: row.genre || '',
+    body_type: row.body_type || '',
+    last_modified: row.last_modified,
+    photos: [],
+    user: {
+      user_id: row.user_id,
+      username: row.username
+    }
+  };
+}
 
       if (row.photo_id) {
         acc[guitarId].photos.push({
@@ -163,17 +168,9 @@ app.get('/users/:userId/guitars', authenticateToken, (req, res) => {
   });
 });
 
+
+// ++++++++++ GET GUITARS ++++++++++
 app.get('/guitars', authenticateToken, (req, res) => {
-  const { sort, order } = req.query;
-  let orderClause = 'ORDER BY g.guitar_id';
-  
-  if (sort) {
-    const allowedColumns = ['brand', 'model', 'year'];
-    const direction = (order && order.toUpperCase() === 'DESC') ? 'DESC' : 'ASC';
-    if (allowedColumns.includes(sort)) {
-      orderClause = `ORDER BY g.${sort} ${direction}`;
-    }
-  }
 
   const query = `
     SELECT 
@@ -184,6 +181,7 @@ app.get('/guitars', authenticateToken, (req, res) => {
       g.serial_number,
       g.genre,
       g.body_type,
+      g.last_modified,
       p.photo_id,
       p.caption,
       u.user_id,
@@ -191,7 +189,7 @@ app.get('/guitars', authenticateToken, (req, res) => {
     FROM Guitar g
     LEFT JOIN Photos p ON g.photo_id = p.photo_id
     JOIN User u ON g.user_id = u.user_id
-    ${orderClause}
+    ORDER BY g.guitar_id DESC
   `;
 
   connection.query(query, (error, results) => {
@@ -203,22 +201,90 @@ app.get('/guitars', authenticateToken, (req, res) => {
     const guitars = results.reduce((acc, row) => {
       const guitarId = row.guitar_id;
       
-      if (!acc[guitarId]) {
-        acc[guitarId] = {
-          guitar_id: row.guitar_id,
-          brand: row.brand,
-          model: row.model,
-          year: row.year,
-          serial_number: row.serial_number,
-          genre: row.genre || '',
-          body_type: row.body_type || '',
-          photos: [],
-          user: {
-            user_id: row.user_id,
-            username: row.username
-          }
-        };
+if (!acc[guitarId]) {
+  acc[guitarId] = {
+    guitar_id: row.guitar_id,
+    brand: row.brand,
+    model: row.model,
+    year: row.year,
+    serial_number: row.serial_number,
+    genre: row.genre || '',
+    body_type: row.body_type || '',
+    last_modified: row.last_modified,
+    photos: [],
+    user: {
+      user_id: row.user_id,
+      username: row.username
+    }
+  };
+}
+
+      if (row.photo_id) {
+        acc[guitarId].photos.push({
+          photo_id: row.photo_id,
+          url: `http://localhost:5001/photos/${row.photo_id}`,
+          caption: row.caption || ''
+        });
       }
+
+      return acc;
+    }, {});
+
+    res.json(Object.values(guitars));
+  });
+});
+
+// ++++++++++ GET GUITARS BY BRAND ++++++++++
+app.get('/guitars/brand/:brandName', authenticateToken, (req, res) => {
+  const { brandName } = req.params;
+  
+  const query = `
+    SELECT 
+      g.guitar_id,
+      g.brand,
+      g.model,
+      g.year,
+      g.serial_number,
+      g.genre,
+      g.body_type,
+      g.last_modified,
+      p.photo_id,
+      p.caption,
+      u.user_id,
+      u.username
+    FROM Guitar g
+    INNER JOIN User u ON g.user_id = u.user_id
+    LEFT JOIN Photos p ON g.photo_id = p.photo_id
+    WHERE g.brand = ?
+    ORDER BY g.year DESC
+  `;
+
+  connection.query(query, [brandName], (error, results) => {
+    if (error) {
+      console.error('Database query error:', error);
+      return res.status(500).json({ error: 'Database error' });
+    }
+    
+    const guitars = results.reduce((acc, row) => {
+      const guitarId = row.guitar_id;
+      
+if (!acc[guitarId]) {
+  acc[guitarId] = {
+    guitar_id: row.guitar_id,
+    brand: row.brand,
+    model: row.model,
+    year: row.year,
+    serial_number: row.serial_number,
+    genre: row.genre || '',
+    body_type: row.body_type || '',
+    last_modified: row.last_modified,
+    photos: [],
+    user: {
+      user_id: row.user_id,
+      username: row.username
+    }
+  };
+}
 
       if (row.photo_id) {
         acc[guitarId].photos.push({
@@ -250,6 +316,7 @@ const upload = multer({
   }
 });
 
+// ++++++++++++++++++++ INSERT A NEW GUITAR ++++++++++++++++++++
 app.post('/guitars', authenticateToken, upload.single('photo'), async (req, res) => {
   const { brand, model, year, serial_number, caption, genre, body_type } = req.body;
   const photo = req.file;
@@ -311,7 +378,7 @@ app.get('/photos/:photoId', async (req, res) => {
   }
 });
 
-// Update a guitar
+// ++++++++++++++++++++ UPDATE A GUITAR ++++++++++++++++++++
 app.put('/guitars/:guitarId', authenticateToken, upload.single('photo'), async (req, res) => {
   const { guitarId } = req.params;
   const { brand, model, year, serial_number, caption, genre, body_type } = req.body;
@@ -352,14 +419,17 @@ app.put('/guitars/:guitarId', authenticateToken, upload.single('photo'), async (
       [brand, model, year, serial_number || null, genre, body_type, photoId, guitarId]
     );
 
-    res.json({ message: 'Guitar updated successfully' });
+    res.json({ 
+      message: 'Guitar updated successfully',
+      last_modified: new Date()
+    });
   } catch (error) {
     console.error('Error updating guitar:', error);
     res.status(500).json({ error: 'Failed to update guitar' });
   }
 });
 
-// Delete a guitar
+// ++++++++++++++++++++ DELETE A GUITAR ++++++++++++++++++++
 app.delete('/guitars/:guitarId', authenticateToken, async (req, res) => {
   const { guitarId } = req.params;
   const userId = req.user.user_id;
@@ -396,7 +466,77 @@ app.delete('/guitars/:guitarId', authenticateToken, async (req, res) => {
   }
 });
 
+// ++++++++++++++++++++ TRIGGERS/PROCEDURES/FUNCTIONS ++++++++++++++++++++
 
+// ++++++++++ GET GUITARS BY GENRE ++++++++++
+app.get('/guitars/genre/:genre', authenticateToken, (req, res) => {
+  const { genre } = req.params;
+  
+  connection.query('CALL get_guitars_by_genre(?)', [genre], (error, results) => {
+    if (error) {
+      console.error('Database query error:', error);
+      return res.status(500).json({ error: 'Database error' });
+    }
+    
+    const guitars = results[0].reduce((acc, row) => {
+      const guitarId = row.guitar_id;
+      
+if (!acc[guitarId]) {
+  acc[guitarId] = {
+    guitar_id: row.guitar_id,
+    brand: row.brand,
+    model: row.model,
+    year: row.year,
+    serial_number: row.serial_number,
+    genre: row.genre || '',
+    body_type: row.body_type || '',
+    last_modified: row.last_modified,
+    photos: [],
+    user: {
+      user_id: row.user_id,
+      username: row.username
+    }
+  };
+}
+
+      if (row.photo_id) {
+        acc[guitarId].photos.push({
+          photo_id: row.photo_id,
+          url: `http://localhost:5001/photos/${row.photo_id}`,
+          caption: row.caption || ''
+        });
+      }
+
+      return acc;
+    }, {});
+
+    res.json(Object.values(guitars));
+  });
+});
+
+// ++++++++++ GET USERS GUITAR COUNT ++++++++++
+app.get('/users/:userId/guitar-count', authenticateToken, (req, res) => {
+  const { userId } = req.params;
+  
+  // Ensure users can only access their own data
+  if (req.user.user_id !== parseInt(userId)) {
+    return res.status(403).json({ error: 'Unauthorized' });
+  }
+
+  const query = 'SELECT COUNT(*) AS guitar_count FROM Guitar WHERE user_id = ?';
+  
+  connection.query(query, [userId], (error, results) => {
+    if (error) {
+      console.error('Database query error:', error);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    res.json({ guitar_count: results[0].guitar_count });
+  });
+});
+
+
+// ++++++++++++++++++++ SERVER ++++++++++++++++++++
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

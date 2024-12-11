@@ -24,14 +24,24 @@ interface Photo {
 }
 const HomePage = () => {
   const navigate = useNavigate();
+
   const [guitars, setGuitars] = useState<Guitar[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // IS ADD GUITAR MODAL OPEN
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // SORT BY GENRE
   const [guitarsByGenre, setGuitarsByGenre] = useState<Guitar[]>([]);
   const [activeGenre, setActiveGenre] = useState<string>('');
 
+  // SORT BY BRAND
+  const [guitarsByBrand, setGuitarsByBrand] = useState<Guitar[]>([]);
+  const [activeBrand, setActiveBrand] = useState<string>('');
 
+
+  // +++++++++++ FETCH GUITARS +++++++++
   const fetchGuitars = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -70,6 +80,7 @@ const HomePage = () => {
     fetchGuitars();
   }, []);
 
+  // +++++++++++ ADD GUITAR +++++++++++
   const handleAddGuitar = async (formData: FormData) => {
     try {
       const token = localStorage.getItem('token');
@@ -124,6 +135,7 @@ const HomePage = () => {
     }
   };
 
+  // +++++++++++ FETCH GUITARS BY GENRE +++++++++++
   const fetchGuitarsByGenre = async (genre: string) => {
     try {
       const token = localStorage.getItem('token');
@@ -154,6 +166,7 @@ const HomePage = () => {
     }
   };
 
+  // +++++++++++ HANDLE GENRE CHANGE +++++++++++
   const handleGenreChange = async (genre: string) => {
     setActiveGenre(genre);
     if (genre) {
@@ -163,6 +176,48 @@ const HomePage = () => {
     }
   };
 
+  // +++++++++++ FETCH GUITARS BY BRAND +++++++++++
+  const fetchGuitarsByBrand = async (brand: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/');
+        throw new Error('Not authenticated');
+      }
+  
+      const response = await fetch(`http://localhost:5001/guitars/brand/${encodeURIComponent(brand)}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+  
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('token');
+          navigate('/');
+        }
+        throw new Error('Failed to fetch guitars by brand');
+      }
+  
+      const data = await response.json();
+      setGuitarsByBrand(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch guitars by brand');
+      console.error('Error:', err);
+    }
+  };
+
+  // +++++++++++ HANDLE BRAND CHANGE +++++++++++
+  const handleBrandChange = async (brand: string) => {
+    setActiveBrand(brand);
+    if (brand) {
+      await fetchGuitarsByBrand(brand);
+    } else {
+      await fetchGuitars(); // Reset to all guitars when no brand is selected
+    }
+  };
+
+  // +++++++++++ FETCH GUITARS +++++++++++
   useEffect(() => {
     const fetchGuitars = async () => {
       try {
@@ -199,6 +254,7 @@ const HomePage = () => {
     fetchGuitars();
   }, []);
 
+  // +++++++++++ EDIT GUITAR +++++++++++
   const handleEditGuitar = async (guitarId: number, formData: FormData) => {
     try {
       const token = localStorage.getItem('token');
@@ -232,6 +288,7 @@ const HomePage = () => {
     }
   };
 
+  // +++++++++++ DELETE GUITAR +++++++++++
   const handleDeleteGuitar = async (guitarId: number) => {
     try {
       const token = localStorage.getItem('token');
@@ -269,8 +326,11 @@ const HomePage = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <div className="container max-w-2xl mx-auto px-4 py-8"> {/* Reduced max width */}
+      <div className="container max-w-2xl mx-auto px-4 py-8">
         <div className="flex justify-evenly items-center mb-8">
+
+          { /* GENRE DROPDOWN */ }
+
           <select
             value={activeGenre}
             onChange={(e) => handleGenreChange(e.target.value)}
@@ -282,9 +342,25 @@ const HomePage = () => {
             <option value="Blues">Blues</option>
             <option value="Country">Country</option>
           </select>
+
+          { /* BRAND DROPDOWN */ }
+          <select
+            value={activeBrand}
+            onChange={(e) => handleBrandChange(e.target.value)}
+            className="px-4 py-2 border rounded"
+          >
+            <option value="">All Brands</option>
+            <option value="Fender">Fender</option>
+            <option value="Gibson">Gibson</option>
+            <option value="Martin">Martin</option>
+            <option value="Taylor">Taylor</option>
+            <option value="PRS">PRS</option>
+          </select>
+
+          { /* ADD NEW GUITAR BUTTON */ }
           <button
             onClick={() => setIsModalOpen(true)}
-            className="px-8 py-4 bg-blue-500 text-white rounded-full hover:bg-blue-600 shadow-md" // Instagram-like button
+            className="px-8 py-4 bg-blue-500 text-white rounded-full hover:bg-blue-600 shadow-md"
           >
             Add New Guitar
           </button>
@@ -303,9 +379,9 @@ const HomePage = () => {
         )}
   
         {!loading && !error && (
-          <div className="space-y-6"> {/* Add vertical spacing between cards */}
+          <div className="space-y-6">
             <GuitarList
-              guitars={activeGenre ? guitarsByGenre : guitars}
+              guitars={activeBrand ? guitarsByBrand : (activeGenre ? guitarsByGenre : guitars)}
               currentUserId={currentUserId}
               onEditGuitar={handleEditGuitar}
               onDeleteGuitar={handleDeleteGuitar}
